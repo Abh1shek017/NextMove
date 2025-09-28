@@ -1,0 +1,18 @@
+# nextmove/docker-compose.yml
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.4
+    container_name: nextmove-db
+    environment:
+      POSTGRES_DB: nextmove
+      POSTGRES_USER: nextmove
+      POSTGRES_PASSWORD: securepass
+    ports:
+      - "5432:5432"
+    volumes:
+      - nextmove_pgdata:/var/lib/postgresql/data
+
+volumes:
+  nextmove_pgdata:
