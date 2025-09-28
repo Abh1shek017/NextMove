@@ -1,7 +1,6 @@
 # app/services/feature_extraction.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from app.models.gps_log import GPSLog
 
 async def extract_features(db: AsyncSession, trip_id: int) -> dict:
     # 1. Get all GPS logs for the trip
@@ -59,19 +58,24 @@ async def extract_features(db: AsyncSession, trip_id: int) -> dict:
                     accelerations.append(acc)
         avg_acceleration = sum(accelerations) / len(accelerations) if accelerations else 0.0
 
-    # 2. Compute distance using PostGIS
+    # 2. Compute distance using PostGIS — FIXED QUERY
     distance_result = await db.execute(
         text("""
+            WITH ordered_points AS (
+                SELECT location::geometry AS geom
+                FROM gps_logs
+                WHERE trip_id = :trip_id
+                ORDER BY timestamp
+            )
             SELECT ST_Length(
-                ST_MakeLine(location ORDER BY timestamp)::geography
+                ST_MakeLine(geom)::geography
             ) / 1000 AS distance_km
-            FROM gps_logs 
-            WHERE trip_id = :trip_id
+            FROM ordered_points
         """),
         {"trip_id": trip_id}
     )
     distance_row = distance_result.fetchone()
-    distance_km = distance_row.distance_km if distance_row and distance_row.distance_km else 0.0
+    distance_km = distance_row.distance_km if distance_row and distance_row.distance_km is not None else 0.0
 
     # --- Final feature set ---
     return {

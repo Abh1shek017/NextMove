@@ -7,12 +7,23 @@ from app.schemas import TripStartResponse, TripStopRequest
 from datetime import datetime, timezone
 from app.services.feature_extraction import extract_features
 from app.services.ml_service import predict_mode
+from pydantic import BaseModel
+import logging
+
+# ---------------------------
+# Logging Setup
+# ---------------------------
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 router = APIRouter(prefix="/trip", tags=["trips"])
 
+
+# ---------------------------
+# Trip Start
+# ---------------------------
 @router.post("/start", response_model=TripStartResponse)
 async def start_trip(db: AsyncSession = Depends(get_db)):
-    # Create a dummy user if none exists (for testing)
     from app.models.user import User
     result = await db.execute(select(User).limit(1))
     user = result.scalars().first()
@@ -28,6 +39,10 @@ async def start_trip(db: AsyncSession = Depends(get_db)):
     await db.refresh(new_trip)
     return TripStartResponse(trip_id=new_trip.id, start_time=new_trip.start_time)
 
+
+# ---------------------------
+# Trip Stop
+# ---------------------------
 @router.post("/stop/{trip_id}")
 async def stop_trip(
     trip_id: int,
@@ -51,33 +66,109 @@ async def stop_trip(
 
     await db.commit()
     return {"message": "Trip stopped", "trip_id": trip_id}
-import logging
-logging.basicConfig(level=logging.DEBUG)
 
+
+# ---------------------------
+# Predict Mode
+# ---------------------------
 @router.post("/predict_mode/{trip_id}")
 async def predict_trip_mode(trip_id: int, db: AsyncSession = Depends(get_db)):
     try:
+        logger.info(f"🔍 Starting prediction for trip_id={trip_id}")
+
+        # Check trip exists
         result = await db.execute(select(Trip).where(Trip.id == trip_id))
         trip = result.scalars().first()
         if not trip:
+            logger.warning(f"Trip {trip_id} not found")
             raise HTTPException(status_code=404, detail="Trip not found")
 
+        # Extract features
+        logger.info(f"📊 Extracting features for trip {trip_id}")
         features = await extract_features(db, trip_id)
-        if not features:
-            raise HTTPException(status_code=400, detail="Not enough GPS data")
+        logger.info(f"Features extracted: {features}")
 
-        logging.info(f"Features for trip {trip_id}: {features}")
+        if not features or not any(features.values()):
+            logger.error(f"No valid features for trip {trip_id}")
+            raise HTTPException(status_code=400, detail="Not enough GPS data to predict")
 
+        # Predict
+        logger.info(f"🧠 Running ML prediction with features: {features}")
         predicted_mode = predict_mode(features)
+        logger.info(f"✅ Prediction result: {predicted_mode}")
 
+        # Save prediction
         trip.predicted_mode = predicted_mode
         await db.commit()
+        logger.info(f"💾 Saved prediction for trip {trip_id}")
 
         return {
             "trip_id": trip_id,
             "predicted_mode": predicted_mode,
             "features": features
         }
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logging.error(f"Prediction error for trip {trip_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail="Prediction failed")
+        logger.exception(f"💥 CRITICAL ERROR in predict_trip_mode for trip {trip_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+
+
+# ---------------------------
+# Confirm Mode
+# ---------------------------
+class TripConfirmation(BaseModel):
+    confirmed_mode: str  # e.g., "car", "bike", "bus", "walk"
+
+
+@router.post("/confirm/{trip_id}")
+async def confirm_trip_mode(
+    trip_id: int,
+    confirmation: TripConfirmation,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        logger.info(f"✅ Starting confirmation for trip_id={trip_id}, mode={confirmation.confirmed_mode}")
+
+        # Check trip exists
+        result = await db.execute(select(Trip).where(Trip.id == trip_id))
+        trip = result.scalars().first()
+        if not trip:
+            raise HTTPException(status_code=404, detail="Trip not found")
+
+        # Save confirmed mode
+        trip.confirmed_mode = confirmation.confirmed_mode
+        await db.commit()
+        logger.info("Trip confirmed in trips table")
+
+        # Save to ML training data
+        logger.info("Extracting features for training data")
+        features = await extract_features(db, trip_id)
+        if features:
+            from app.models.ml_training import MLTrainingData
+            training_data = MLTrainingData(
+                trip_id=trip_id,
+                avg_speed=float(features.get("avg_speed", 0)),
+                max_speed=float(features.get("max_speed", 0)),
+                std_speed=float(features.get("std_speed", 0)),
+                avg_acceleration=float(features.get("avg_acceleration", 0)),
+                stop_frequency=int(features.get("stop_frequency", 0)),
+                distance_km=float(features.get("distance_km", 0)),
+                mode_label=confirmation.confirmed_mode
+            )
+            db.add(training_data)
+            await db.commit()
+            logger.info("✅ Saved to ml_training_data")
+        else:
+            logger.warning("⚠️ No features for training data")
+
+        return {
+            "message": "Trip mode confirmed",
+            "trip_id": trip_id,
+            "confirmed_mode": confirmation.confirmed_mode
+        }
+
+    except Exception as e:
+        logger.exception(f"💥 CRITICAL ERROR in confirm_trip_mode for trip {trip_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Confirmation failed: {str(e)}")
