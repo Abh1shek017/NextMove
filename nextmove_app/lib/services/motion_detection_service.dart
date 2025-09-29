@@ -8,6 +8,7 @@ import '../models/trip_model.dart';
 import 'notification_service.dart';
 import 'navigation_service.dart';
 import 'local_trip_service.dart';
+// import 'background_service.dart';
 
 class MotionDetectionService extends ChangeNotifier {
   static final MotionDetectionService _instance =
@@ -38,7 +39,6 @@ class MotionDetectionService extends ChangeNotifier {
   List<GpsLog> _locationBuffer = [];
 
   // Thresholds for motion detection
-  static const double _motionThreshold = 0.5; // m/s²
   static const int _bufferSize = 10;
 
   // Trip detection logic - Updated thresholds
@@ -46,10 +46,12 @@ class MotionDetectionService extends ChangeNotifier {
   int _stationaryCount = 0;
   static const int _stationaryRequired = 10; // consecutive stationary readings
 
-  // New trip start criteria
-  static const double _speedThreshold = 15.0; // km/h
-  static const int _speedDurationMinutes = 2; // minutes
-  static const double _minDistanceMeters = 500.0; // meters
+  // New trip start criteria - OPTIMIZED FOR WALKING & BIKING
+  static const double _speedThreshold =
+      2.0; // km/h (walking ~3-5, biking ~15-25 km/h)
+  static const double _speedDurationMinutes =
+      0.5; // 30 seconds of sustained movement
+  static const double _minDistanceMeters = 30.0; // meters (30 meters minimum)
 
   // Speed tracking variables
   DateTime? _speedStartTime;
@@ -78,17 +80,20 @@ class MotionDetectionService extends ChangeNotifier {
       _isMonitoring = true;
       notifyListeners();
 
-      // Start accelerometer monitoring
+      // Start accelerometer monitoring (using new API)
       _accelerometerSubscription =
-          accelerometerEvents.listen(_handleAccelerometerData);
+          accelerometerEventStream().listen(_handleAccelerometerData);
 
-      // Start gyroscope monitoring
-      _gyroscopeSubscription = gyroscopeEvents.listen(_handleGyroscopeData);
+      // Start gyroscope monitoring (using new API)
+      _gyroscopeSubscription =
+          gyroscopeEventStream().listen(_handleGyroscopeData);
 
       // Start location monitoring
       _startLocationMonitoring();
 
-      debugPrint('✅ Motion detection started successfully');
+      // Background service handles motion detection when app is closed
+      // Foreground service handles motion detection when app is open
+      debugPrint('✅ Foreground motion detection started successfully');
     } catch (e) {
       debugPrint('❌ Failed to start motion detection: $e');
       _isMonitoring = false;
@@ -116,6 +121,7 @@ class MotionDetectionService extends ChangeNotifier {
     _currentTrip = null;
 
     _resetBuffers();
+
     notifyListeners();
 
     debugPrint('✅ Motion detection stopped');
@@ -204,6 +210,14 @@ class MotionDetectionService extends ChangeNotifier {
     final cutoffTime = DateTime.now().subtract(const Duration(minutes: 5));
     _locationBuffer.removeWhere((log) => log.timestamp.isBefore(cutoffTime));
 
+    // Show current speed in terminal
+    _logCurrentSpeed(position);
+
+    // Update persistent notification if trip is active
+    if (_isTripActive && _currentTrip != null) {
+      _updateActiveTripNotification();
+    }
+
     // Update current trip if active
     if (_isTripActive && _currentTrip != null) {
       _updateCurrentTrip(gpsLog);
@@ -213,6 +227,17 @@ class MotionDetectionService extends ChangeNotifier {
     if (!_isTripActive) {
       _checkTripStartConditions(gpsLog);
     }
+  }
+
+  /// Log current speed to terminal for debugging
+  void _logCurrentSpeed(Position position) {
+    final speedMs = position.speed;
+    final speedKmh = speedMs * 3.6;
+    final accuracy = position.accuracy;
+    final timestamp = DateTime.now();
+
+    debugPrint(
+        '📊 SPEED: ${speedKmh.toStringAsFixed(2)} km/h (${speedMs.toStringAsFixed(2)} m/s) | Accuracy: ${accuracy.toStringAsFixed(1)}m | Time: ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}:${timestamp.second.toString().padLeft(2, '0')}');
   }
 
   /// Check trip start conditions based on speed and distance
@@ -278,12 +303,21 @@ class MotionDetectionService extends ChangeNotifier {
     double avgAcceleration = _accelerationBuffer.reduce((a, b) => a + b) /
         _accelerationBuffer.length;
 
-    // Detect motion vs stationary
-    bool isMoving = avgAcceleration > _motionThreshold;
+    // Debug motion magnitude (only log occasionally to avoid spam)
+    if (DateTime.now().millisecond % 1000 < 50) {
+      // Log ~5% of the time
+      debugPrint(
+          '📱 Foreground avg acceleration: ${avgAcceleration.toStringAsFixed(3)}');
+    }
+
+    // Detect motion vs stationary - optimized for both walking and biking
+    bool isMoving = avgAcceleration > 0.8; // Lowered to 0.8 for bike detection
 
     if (isMoving) {
       _motionCount++;
       _stationaryCount = 0;
+      debugPrint(
+          '🚗 Foreground: Significant motion detected (${avgAcceleration.toStringAsFixed(2)})');
     } else {
       _stationaryCount++;
       _motionCount = 0;
@@ -341,6 +375,13 @@ class MotionDetectionService extends ChangeNotifier {
       await _notificationService.showTripStartNotification(
         startLocation: _currentTrip!.startLocation ?? 'Unknown Location',
         startTime: _currentTrip!.startTime!,
+      );
+
+      // Show persistent active trip notification
+      await _notificationService.showActiveTripNotification(
+        startLocation: _currentTrip!.startLocation ?? 'Unknown Location',
+        startTime: _currentTrip!.startTime!,
+        currentDistance: _currentTrip!.distance ?? 0.0,
       );
 
       // Trip start is now handled locally only
@@ -407,6 +448,9 @@ class MotionDetectionService extends ChangeNotifier {
         distance: _currentTrip!.distance ?? 0.0,
         duration: _currentTrip!.duration ?? 0,
       );
+
+      // Cancel persistent active trip notification
+      await _notificationService.cancelActiveTripNotification();
 
       // Trip end is now handled locally only - will be saved after user confirmation
       debugPrint('✅ Trip completed locally - waiting for user confirmation');
@@ -490,6 +534,21 @@ class MotionDetectionService extends ChangeNotifier {
   Future<void> manualStopTrip() async {
     if (!_isTripActive) return;
     _stopTrip();
+  }
+
+  /// Update persistent notification with current trip data
+  Future<void> _updateActiveTripNotification() async {
+    if (_currentTrip == null) return;
+
+    try {
+      await _notificationService.showActiveTripNotification(
+        startLocation: _currentTrip!.startLocation ?? 'Unknown Location',
+        startTime: _currentTrip!.startTime!,
+        currentDistance: _currentTrip!.distance ?? 0.0,
+      );
+    } catch (e) {
+      debugPrint('❌ Failed to update active trip notification: $e');
+    }
   }
 
   /// Create a test trip with sample data (for testing purposes)
@@ -581,7 +640,29 @@ class MotionDetectionService extends ChangeNotifier {
       'totalDistanceDuringSpeed': _totalDistanceDuringSpeed,
       'speedTrackingLogs': _speedTrackingLogs.length,
       'currentTrip': _currentTrip?.toJson(),
+      'latestAcceleration':
+          _accelerationBuffer.isNotEmpty ? _accelerationBuffer.last : 0.0,
+      'avgAcceleration': _accelerationBuffer.isNotEmpty
+          ? _accelerationBuffer.reduce((a, b) => a + b) /
+              _accelerationBuffer.length
+          : 0.0,
     };
+  }
+
+  /// Debug function to test motion detection
+  void debugMotionDetection() {
+    final stats = getMotionStats();
+    debugPrint('🔍 MOTION DEBUG:');
+    debugPrint('  - Is Monitoring: ${stats['isMonitoring']}');
+    debugPrint('  - Is Trip Active: ${stats['isTripActive']}');
+    debugPrint('  - Latest Acceleration: ${stats['latestAcceleration']}');
+    debugPrint('  - Average Acceleration: ${stats['avgAcceleration']}');
+    debugPrint('  - Motion Count: ${stats['motionCount']}');
+    debugPrint('  - Stationary Count: ${stats['stationaryCount']}');
+    debugPrint('  - Speed Start Time: ${stats['speedStartTime']}');
+    debugPrint(
+        '  - Distance During Speed: ${stats['totalDistanceDuringSpeed']}');
+    debugPrint('  - Location Buffer Size: ${stats['locationBuffer']}');
   }
 
   @override

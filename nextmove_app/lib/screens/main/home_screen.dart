@@ -233,6 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+              
               IconButton(
                 icon: const Icon(Icons.notifications_outlined),
                 onPressed: () {
@@ -908,6 +909,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+        // Add a debug button
+ElevatedButton(
+  onPressed: () => MotionDetectionService().debugMotionDetection(),
+  child: Text('Debug Motion'),
+),
         const SizedBox(height: 16),
         Row(
           children: [

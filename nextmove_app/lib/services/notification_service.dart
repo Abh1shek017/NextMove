@@ -25,6 +25,9 @@ class NotificationService {
       const androidSettings =
           AndroidInitializationSettings('@mipmap/ic_launcher');
 
+      // Create notification channels for better organization
+      await _createNotificationChannels();
+
       // iOS initialization settings
       const iosSettings = DarwinInitializationSettings(
         requestAlertPermission: true,
@@ -49,6 +52,37 @@ class NotificationService {
     }
   }
 
+  /// Create notification channels for Android
+  Future<void> _createNotificationChannels() async {
+    if (Platform.isAndroid) {
+      const tripChannel = AndroidNotificationChannel(
+        'trip_tracking',
+        'Trip Tracking',
+        description: 'Notifications for trip start, stop, and reminders',
+        importance: Importance.high,
+        playSound: true,
+      );
+
+      const reminderChannel = AndroidNotificationChannel(
+        'trip_reminders',
+        'Trip Reminders',
+        description: 'Reminders to confirm your trips',
+        importance: Importance.defaultImportance,
+        playSound: false,
+      );
+
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(tripChannel);
+
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(reminderChannel);
+    }
+  }
+
   /// Request notification permissions
   Future<void> _requestPermissions() async {
     if (Platform.isAndroid) {
@@ -57,6 +91,60 @@ class NotificationService {
         debugPrint('⚠️ Notification permission denied');
       }
     }
+  }
+
+  /// Show persistent notification for active trip
+  Future<void> showActiveTripNotification({
+    required String startLocation,
+    required DateTime startTime,
+    required double currentDistance,
+  }) async {
+    if (!_isInitialized) await initialize();
+
+    try {
+      final duration = DateTime.now().difference(startTime);
+      final durationText = _formatDuration(duration);
+
+      const androidDetails = AndroidNotificationDetails(
+        'trip_tracking',
+        'Trip Tracking',
+        channelDescription: 'Active trip tracking notification',
+        importance: Importance.low,
+        priority: Priority.low,
+        ongoing: true,
+        autoCancel: false,
+        showWhen: false,
+        category: AndroidNotificationCategory.status,
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: false,
+        presentBadge: false,
+        presentSound: false,
+      );
+
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await _notifications.show(
+        999, // Persistent notification ID
+        '🚗 Trip in Progress',
+        'Started from $startLocation • $durationText • ${currentDistance.toStringAsFixed(1)} km',
+        details,
+      );
+
+      debugPrint('✅ Active trip notification shown');
+    } catch (e) {
+      debugPrint('❌ Failed to show active trip notification: $e');
+    }
+  }
+
+  /// Cancel persistent trip notification
+  Future<void> cancelActiveTripNotification() async {
+    await _notifications.cancel(999);
+    debugPrint('✅ Active trip notification cancelled');
   }
 
   /// Handle notification tap

@@ -249,7 +249,7 @@ class _ProfileTabScreenState extends State<ProfileTabScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '🌴 Designed with love in Kerala',
+                    '🌴 Designed with love by BitWits',
                     style: AppTheme.caption.copyWith(
                       fontStyle: FontStyle.italic,
                       color: AppTheme.successGreen,
@@ -508,7 +508,7 @@ class _ProfileTabScreenState extends State<ProfileTabScreen> {
         const Text('• Privacy-focused data collection'),
         const SizedBox(height: 16),
         const Text(
-          'Developed with ❤️ in Kerala, India',
+          'Developed with ❤️ by BitWits',
           style: TextStyle(fontStyle: FontStyle.italic),
         ),
       ],

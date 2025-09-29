@@ -7,10 +7,19 @@ import 'services/location_service.dart';
 import 'services/auth_service.dart';
 import 'services/motion_detection_service.dart';
 import 'services/navigation_service.dart';
+import 'services/background_service.dart';
+import 'services/app_lifecycle_service.dart';
 import 'utils/constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize background service
+  await BackgroundService.initialize();
+
+  // Initialize app lifecycle service
+  await AppLifecycleService().initialize();
+
   runApp(const NextMoveApp());
 }
 

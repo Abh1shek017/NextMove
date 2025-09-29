@@ -33,6 +33,14 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
       permission: Permission.location,
     ),
     PermissionStep(
+      title: 'Background Location',
+      description:
+          'To track trips even when the app is in background, please enable background location.',
+      buttonText: 'Grant Permission',
+      icon: Icons.location_searching,
+      permission: Permission.locationAlways,
+    ),
+    PermissionStep(
       title: 'Motion & Fitness Activity',
       description:
           'To help guess your travel mode, please allow Motion & Fitness Activity access.',
