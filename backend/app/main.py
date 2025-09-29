@@ -8,10 +8,24 @@ from app.models.trip import Trip
 from app.models.gps_log import GPSLog
 
 # Import routers
-from app.routers import trips, gps
+from app.routers import trips, gps, auth
 
-app = FastAPI(title="NextMove API (No Auth)")
+# Import security middleware
+from app.middleware.security import SecurityMiddleware, add_cors_security
 
+app = FastAPI(
+    title="NextMove API",
+    description="Secure transportation tracking API with user authentication",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# Add security middleware
+app.add_middleware(SecurityMiddleware, max_requests_per_minute=60)
+add_cors_security(app)
+
+app.include_router(auth.router)
 app.include_router(trips.router)
 app.include_router(gps.router)
 
@@ -22,4 +36,7 @@ async def startup():
 
 @app.get("/")
 async def root():
-    return {"message": "NextMove API - No Auth Mode"}
+    return {"message": "NextMove API"}
+
+# Admin endpoint removed for security - was unprotected and dangerous
+# If needed, implement with proper admin authentication

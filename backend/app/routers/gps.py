@@ -5,16 +5,25 @@ from geoalchemy2.elements import WKTElement
 from app.db import get_db
 from app.models.gps_log import GPSLog
 from app.models.trip import Trip
+from app.models.user import User
 from app.schemas import GPSLogBatchCreate
+from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/gps", tags=["gps"])
 
 @router.post("/batch")
-async def log_gps_batch(batch: GPSLogBatchCreate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Trip).where(Trip.id == batch.trip_id))
+async def log_gps_batch(
+    batch: GPSLogBatchCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    # Verify trip belongs to user
+    result = await db.execute(
+        select(Trip).where(Trip.id == batch.trip_id, Trip.user_id == current_user.id)
+    )
     trip = result.scalars().first()
     if not trip:
-        raise HTTPException(status_code=404, detail="Trip not found")
+        raise HTTPException(status_code=404, detail="Trip not found or not owned by user")
 
     gps_logs = []
     for log in batch.logs:
