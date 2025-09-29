@@ -57,7 +57,7 @@ class MLTripDetectionService {
         now.difference(_lastPredictionTime!) >= _predictionInterval) {
       _lastPredictionTime = now;
       // Temporarily disabled due to 404 error - ML endpoints not available
-      // _makeMLPrediction();
+      _makeMLPrediction();
       debugPrint(
           '⚠️ ML predictions disabled - using rule-based detection only');
     }

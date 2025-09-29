@@ -96,11 +96,20 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      // ✅ Professional Black AppBar
+      // ✅ Professional Gradient AppBar
       appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppTheme.primaryBlue, AppTheme.successGreen],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title: const Text("Past Trips",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [

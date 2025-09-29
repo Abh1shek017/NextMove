@@ -176,107 +176,127 @@ class _HomeScreenState extends State<HomeScreen> {
     return Consumer<MotionDetectionService>(
       builder: (context, motionService, child) {
         return Scaffold(
-          appBar: AppBar(
-            title: const Row(
-              children: [
-                Icon(
-                  Icons.directions_car_rounded,
-                  color: Colors.white,
-                  size: 28,
-                ),
-                SizedBox(width: 8),
-                Text("NextMove"),
-              ],
-            ),
-            centerTitle: false,
-            elevation: 0,
-            backgroundColor: AppTheme.primaryBlue,
-            foregroundColor: Colors.white,
-            actions: [
-              // Motion detection status indicator
-              Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: motionService.isMonitoring
-                      ? (motionService.isTripActive
-                          ? AppTheme.successGreen
-                          : AppTheme.primaryBlue)
-                      : Colors.red,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      motionService.isTripActive
-                          ? Icons.directions_car
-                          : motionService.isMonitoring
-                              ? Icons.location_searching
-                              : Icons.location_disabled,
-                      size: 16,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      motionService.isTripActive
-                          ? 'Trip Active'
-                          : motionService.isMonitoring
-                              ? 'Monitoring'
-                              : 'Offline',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+            appBar: AppBar(
+              flexibleSpace: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppTheme.primaryBlue, AppTheme.successGreen],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
               ),
-              
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                onPressed: () {
-                  // TODO: Show notifications
-                },
-              ),
-            ],
-          ),
-          body: RefreshIndicator(
-            onRefresh: _refreshData,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(AppConstants.defaultPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              title: const Row(
                 children: [
-                  // Header Section
-                  _buildHeaderSection(),
-                  const SizedBox(height: 24),
-
-                  // Current Trip Status (if active)
-                  if (motionService.isTripActive &&
-                      motionService.currentTrip != null)
-                    _buildCurrentTripCard(motionService.currentTrip!),
-                  if (motionService.isTripActive &&
-                      motionService.currentTrip != null)
-                    const SizedBox(height: 20),
-
-                  // Today's Activity Card
-                  _buildTodayActivityCard(),
-                  const SizedBox(height: 20),
-
-                  // Unconfirmed Trips Section
-                  _buildUnconfirmedTripsSection(),
-                  const SizedBox(height: 20),
-
-                  // Quick Actions Section
-                  _buildQuickActionsSection(),
+                  Icon(
+                    Icons.directions_car_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  SizedBox(width: 8),
+                  Text("NextMove",
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w600)),
                 ],
               ),
+              centerTitle: false,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              actions: [
+                // Motion detection status indicator
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: motionService.isMonitoring
+                        ? (motionService.isTripActive
+                            ? AppTheme.successGreen
+                            : AppTheme.primaryBlue)
+                        : Colors.red,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        motionService.isTripActive
+                            ? Icons.directions_car
+                            : motionService.isMonitoring
+                                ? Icons.location_searching
+                                : Icons.location_disabled,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        motionService.isTripActive
+                            ? 'Trip Active'
+                            : motionService.isMonitoring
+                                ? 'Monitoring'
+                                : 'Offline',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined),
+                  onPressed: () {
+                    // TODO: Show notifications
+                  },
+                ),
+              ],
             ),
-          ),
-        );
+            body: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.white, Colors.blue[50]!],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: RefreshIndicator(
+                onRefresh: _refreshData,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(AppConstants.defaultPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Section
+                      _buildHeaderSection(),
+                      const SizedBox(height: 24),
+
+                      // Current Trip Status (if active)
+                      if (motionService.isTripActive &&
+                          motionService.currentTrip != null)
+                        _buildCurrentTripCard(motionService.currentTrip!),
+                      if (motionService.isTripActive &&
+                          motionService.currentTrip != null)
+                        const SizedBox(height: 20),
+
+                      // Today's Activity Card
+                      _buildTodayActivityCard(),
+                      const SizedBox(height: 20),
+
+                      // Unconfirmed Trips Section
+                      _buildUnconfirmedTripsSection(),
+                      const SizedBox(height: 20),
+
+                      // Quick Actions Section
+                      _buildQuickActionsSection(),
+                    ],
+                  ),
+                ),
+              ),
+            ));
       },
     );
   }
@@ -909,11 +929,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        // Add a debug button
-ElevatedButton(
-  onPressed: () => MotionDetectionService().debugMotionDetection(),
-  child: Text('Debug Motion'),
-),
         const SizedBox(height: 16),
         Row(
           children: [
