@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nextmove_app/screens/main/main_screen.dart';
+import 'package:nextmove_app/screens/home/main_screen.dart';
 import 'package:nextmove_app/screens/trip/trip_confirmation_screen.dart';
 import 'package:nextmove_app/screens/trip/trip_details_screen.dart';
 import 'package:nextmove_app/models/trip_model.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/auth/login_screen.dart';
-import 'screens/main/main_screen.dart';
+import 'screens/home/main_screen.dart';
 import 'services/location_service.dart';
 import 'services/auth_service.dart';
 import 'services/motion_detection_service.dart';

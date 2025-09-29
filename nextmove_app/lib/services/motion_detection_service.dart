@@ -8,6 +8,7 @@ import '../models/trip_model.dart';
 import 'notification_service.dart';
 import 'navigation_service.dart';
 import 'local_trip_service.dart';
+import 'ml_trip_detection_service.dart';
 // import 'background_service.dart';
 
 class MotionDetectionService extends ChangeNotifier {
@@ -24,6 +25,9 @@ class MotionDetectionService extends ChangeNotifier {
 
   // Notification service
   final NotificationService _notificationService = NotificationService();
+
+  // ML trip detection service
+  final MLTripDetectionService _mlService = MLTripDetectionService();
 
   // Motion sensor data
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
@@ -179,7 +183,18 @@ class MotionDetectionService extends ChangeNotifier {
       _accelerationBuffer.removeAt(0);
     }
 
-    // Analyze motion pattern
+    // Send data to ML service
+    _mlService.addSensorData(
+      accelerationX: event.x,
+      accelerationY: event.y,
+      accelerationZ: event.z,
+      gyroscopeX: 0,
+      gyroscopeY: 0,
+      gyroscopeZ: 0,
+      timestamp: DateTime.now(),
+    );
+
+    // Analyze motion pattern (rule-based fallback)
     _analyzeMotionPattern(netAcceleration);
   }
 
@@ -193,6 +208,17 @@ class MotionDetectionService extends ChangeNotifier {
     if (_gyroscopeBuffer.length > _bufferSize) {
       _gyroscopeBuffer.removeAt(0);
     }
+
+    // Send gyroscope data to ML service (will be combined with accelerometer data)
+    _mlService.addSensorData(
+      accelerationX: 0, // Will be updated by accelerometer handler
+      accelerationY: 0,
+      accelerationZ: 0,
+      gyroscopeX: event.x,
+      gyroscopeY: event.y,
+      gyroscopeZ: event.z,
+      timestamp: DateTime.now(),
+    );
   }
 
   /// Handle location data for trip tracking
@@ -212,6 +238,18 @@ class MotionDetectionService extends ChangeNotifier {
 
     // Show current speed in terminal
     _logCurrentSpeed(position);
+
+    // Send speed data to ML service
+    _mlService.addSensorData(
+      accelerationX: 0,
+      accelerationY: 0,
+      accelerationZ: 0,
+      gyroscopeX: 0,
+      gyroscopeY: 0,
+      gyroscopeZ: 0,
+      speed: position.speed * 3.6, // Convert m/s to km/h
+      timestamp: position.timestamp,
+    );
 
     // Update persistent notification if trip is active
     if (_isTripActive && _currentTrip != null) {

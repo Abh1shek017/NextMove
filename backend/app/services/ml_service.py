@@ -30,8 +30,12 @@ def predict_mode(features: dict) -> str:
             return "car"
 
     try:
+        # Load label encoder
+        label_encoder = joblib.load("app/ml_models/label_encoder.pkl")
+        
         X = [[features.get(f, 0.0) for f in FEATURES]]
-        prediction = model.predict(X)[0]
+        prediction_encoded = model.predict(X)[0]
+        prediction = label_encoder.inverse_transform([prediction_encoded])[0]
         return str(prediction)
     except Exception as e:
         logging.error("ML prediction error: %s", str(e))

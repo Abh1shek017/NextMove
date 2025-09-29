@@ -77,6 +77,6 @@ model.fit(X_train, y_train)
 joblib.dump(model, "app/ml_models/mode_model.pkl")
 joblib.dump(label_encoder, "app/ml_models/label_encoder.pkl")
 
-print("✅ Model trained and saved to app/ml_models/mode_model.pkl")
-print("✅ Label encoder saved to app/ml_models/label_encoder.pkl")
+print("Model trained and saved to app/ml_models/mode_model.pkl")
+print("Label encoder saved to app/ml_models/label_encoder.pkl")
 print(f"Accuracy on test set: {model.score(X_test, y_test):.2f}")

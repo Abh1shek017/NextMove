@@ -6,7 +6,7 @@ import 'dart:async';
 import '../../utils/constants.dart';
 import '../../services/auth_service.dart';
 import '../profile/profile_setup_screen.dart';
-import '../main/main_screen.dart';
+import '../home/main_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
