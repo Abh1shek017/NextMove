@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../../models/trip_model.dart';
 import '../trip/trip_confirmation_screen.dart';
+import '../trips/trips_list_screen.dart';
 import '../../services/motion_detection_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/local_trip_service.dart';
@@ -266,7 +267,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 onRefresh: _refreshData,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(AppConstants.defaultPadding),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.defaultPadding * 0.5,
+                    vertical: AppConstants.defaultPadding,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -333,38 +337,25 @@ class _HomeScreenState extends State<HomeScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppConstants.borderRadius),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.defaultPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.today,
-                    color: AppTheme.primaryBlue,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  "Today's Activity",
-                  style: AppTheme.headingMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            if (totalTrips == 0)
-              _buildEmptyState()
-            else
-              _buildActivityMetrics(totalTrips, totalDistance, totalTime),
-          ],
+      child: InkWell(
+        onTap: () => _navigateToTripsList(),
+        borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+        child: Padding(
+          padding: const EdgeInsets.all(AppConstants.defaultPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Today's Activity",
+                style: AppTheme.headingMedium,
+              ),
+              const SizedBox(height: 20),
+              if (totalTrips == 0)
+                _buildEmptyState()
+              else
+                _buildActivityMetrics(totalTrips, totalDistance, totalTime),
+            ],
+          ),
         ),
       ),
     );
@@ -372,7 +363,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildEmptyState() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(AppConstants.borderRadius),
@@ -682,6 +673,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _navigateToTripsList() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const TripsListScreen(),
+      ),
+    );
+  }
+
   Color _getModeColor(String mode) {
     switch (mode.toLowerCase()) {
       case 'car':
@@ -980,6 +980,58 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: const Text('Clear Data'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Debug and manual trip buttons
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () =>
+                    MotionDetectionService().debugMotionDetection(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.warningOrange,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text('Debug Motion'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Consumer<MotionDetectionService>(
+                builder: (context, motionService, child) => ElevatedButton(
+                  onPressed: () async {
+                    if (motionService.isTripActive) {
+                      await motionService.stopTripManually();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Bike trip stopped manually!'),
+                          backgroundColor: AppTheme.warningOrange,
+                        ),
+                      );
+                    } else {
+                      await motionService.startTripManually();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Bike trip started manually!'),
+                          backgroundColor: AppTheme.successGreen,
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: motionService.isTripActive
+                        ? AppTheme.warningOrange
+                        : AppTheme.successGreen,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  child: Text(motionService.isTripActive
+                      ? 'Stop Trip'
+                      : 'Start Bike Trip'),
                 ),
               ),
             ),

@@ -20,6 +20,7 @@ class MotionDetectionService extends ChangeNotifier {
   // Motion detection state
   bool _isMonitoring = false;
   bool _isTripActive = false;
+  bool _manualTripMode = false; // Flag to disable auto-stop for manual trips
   Trip? _currentTrip;
   Trip? _lastCompletedTrip; // Store last completed trip for confirmation
 
@@ -45,22 +46,34 @@ class MotionDetectionService extends ChangeNotifier {
   // Thresholds for motion detection
   static const int _bufferSize = 10;
 
-  // Trip detection logic - Updated thresholds
+  // Trip detection logic - HYBRID APPROACH (Accelerometer + GPS)
   int _motionCount = 0;
   int _stationaryCount = 0;
   static const int _stationaryRequired = 10; // consecutive stationary readings
 
-  // New trip start criteria - OPTIMIZED FOR WALKING & BIKING
+  // Accelerometer-based trip detection thresholds
+  static const double _motionThreshold =
+      0.5; // m/s² - minimum acceleration for movement
+  static const int _motionRequired =
+      5; // consecutive motion readings to start trip
+  static const double _motionDurationSeconds =
+      10.0; // seconds of sustained motion
+
+  // GPS validation thresholds (more lenient)
   static const double _speedThreshold =
-      2.0; // km/h (walking ~3-5, biking ~15-25 km/h)
-  static const double _speedDurationMinutes =
-      0.5; // 30 seconds of sustained movement
-  static const double _minDistanceMeters = 30.0; // meters (30 meters minimum)
+      1.0; // km/h (lowered for better detection)
+  static const double _speedDurationMinutes = 0.2; // 12 seconds (reduced)
+  static const double _minDistanceMeters = 10.0; // meters (reduced)
 
   // Speed tracking variables
   DateTime? _speedStartTime;
   double _totalDistanceDuringSpeed = 0.0;
   List<GpsLog> _speedTrackingLogs = [];
+
+  // Accelerometer-based trip detection variables
+  DateTime? _motionStartTime;
+  int _consecutiveMotionCount = 0;
+  bool _motionDetected = false;
 
   // Getters
   bool get isMonitoring => _isMonitoring;
@@ -194,7 +207,10 @@ class MotionDetectionService extends ChangeNotifier {
       timestamp: DateTime.now(),
     );
 
-    // Analyze motion pattern (rule-based fallback)
+    // NEW: Accelerometer-based trip detection
+    _checkAccelerometerMotion(netAcceleration);
+
+    // Legacy: Analyze motion pattern (for trip stop detection)
     _analyzeMotionPattern(netAcceleration);
   }
 
@@ -219,6 +235,58 @@ class MotionDetectionService extends ChangeNotifier {
       gyroscopeZ: event.z,
       timestamp: DateTime.now(),
     );
+  }
+
+  /// NEW: Check accelerometer-based motion for trip detection
+  void _checkAccelerometerMotion(double netAcceleration) {
+    // Only check if not already in a trip
+    if (_isTripActive) return;
+
+    if (netAcceleration >= _motionThreshold) {
+      // Motion detected
+      _consecutiveMotionCount++;
+
+      if (_motionStartTime == null) {
+        _motionStartTime = DateTime.now();
+        debugPrint(
+            '🚶 Motion detected (${netAcceleration.toStringAsFixed(2)} m/s²) - starting motion tracking...');
+      }
+
+      // Check if we have enough consecutive motion readings
+      if (_consecutiveMotionCount >= _motionRequired) {
+        _motionDetected = true;
+        debugPrint(
+            '✅ Sustained motion detected (${_consecutiveMotionCount} readings) - ready for GPS validation');
+      }
+    } else {
+      // No significant motion
+      if (_motionDetected) {
+        // Check if motion duration is sufficient
+        if (_motionStartTime != null) {
+          final duration = DateTime.now().difference(_motionStartTime!);
+          if (duration.inSeconds >= _motionDurationSeconds) {
+            debugPrint(
+                '🎯 Motion duration sufficient (${duration.inSeconds}s) - GPS validation will start');
+            // GPS validation will happen in _handleLocationData
+          } else {
+            debugPrint(
+                '⚠️ Motion too short (${duration.inSeconds}s) - resetting');
+            _resetMotionTracking();
+          }
+        }
+      } else {
+        // Reset if no motion detected
+        _consecutiveMotionCount = 0;
+        _motionStartTime = null;
+      }
+    }
+  }
+
+  /// Reset motion tracking variables
+  void _resetMotionTracking() {
+    _motionStartTime = null;
+    _consecutiveMotionCount = 0;
+    _motionDetected = false;
   }
 
   /// Handle location data for trip tracking
@@ -261,9 +329,9 @@ class MotionDetectionService extends ChangeNotifier {
       _updateCurrentTrip(gpsLog);
     }
 
-    // Check for trip start conditions using speed and distance
-    if (!_isTripActive) {
-      _checkTripStartConditions(gpsLog);
+    // NEW: Check for trip start conditions using hybrid approach
+    if (!_isTripActive && _motionDetected) {
+      _checkHybridTripStartConditions(gpsLog);
     }
   }
 
@@ -278,7 +346,39 @@ class MotionDetectionService extends ChangeNotifier {
         '📊 SPEED: ${speedKmh.toStringAsFixed(2)} km/h (${speedMs.toStringAsFixed(2)} m/s) | Accuracy: ${accuracy.toStringAsFixed(1)}m | Time: ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}:${timestamp.second.toString().padLeft(2, '0')}');
   }
 
-  /// Check trip start conditions based on speed and distance
+  /// NEW: Check hybrid trip start conditions (Accelerometer + GPS)
+  void _checkHybridTripStartConditions(GpsLog gpsLog) {
+    // Convert speed from m/s to km/h
+    double speedKmh = (gpsLog.speed ?? 0.0) * 3.6;
+
+    // More lenient GPS validation since accelerometer already confirmed motion
+    if (speedKmh >= _speedThreshold) {
+      // GPS confirms movement - start trip immediately
+      debugPrint('🚀 HYBRID: Accelerometer + GPS confirmed - starting trip!');
+      debugPrint('   📊 GPS Speed: ${speedKmh.toStringAsFixed(1)} km/h');
+      debugPrint(
+          '   🚶 Motion Duration: ${DateTime.now().difference(_motionStartTime!).inSeconds}s');
+
+      _startTrip();
+      _resetMotionTracking();
+    } else if (speedKmh >= 0.5) {
+      // Very low threshold for walking
+      // Even very slow movement is acceptable if accelerometer detected motion
+      debugPrint(
+          '🚶 HYBRID: Slow movement detected (${speedKmh.toStringAsFixed(1)} km/h) - starting trip');
+      debugPrint(
+          '   🚶 Motion Duration: ${DateTime.now().difference(_motionStartTime!).inSeconds}s');
+
+      _startTrip();
+      _resetMotionTracking();
+    } else {
+      // GPS shows no movement - wait a bit more or reset
+      debugPrint(
+          '⏳ HYBRID: Waiting for GPS confirmation (${speedKmh.toStringAsFixed(1)} km/h)');
+    }
+  }
+
+  /// Check trip start conditions based on speed and distance (LEGACY - GPS only)
   void _checkTripStartConditions(GpsLog gpsLog) {
     // Convert speed from m/s to km/h
     double speedKmh = (gpsLog.speed ?? 0.0) * 3.6;
@@ -361,8 +461,10 @@ class MotionDetectionService extends ChangeNotifier {
       _motionCount = 0;
     }
 
-    // Trip stop detection (still using motion pattern)
-    if (_isTripActive && _stationaryCount >= _stationaryRequired) {
+    // Trip stop detection (still using motion pattern) - disabled for manual trips
+    if (_isTripActive &&
+        _stationaryCount >= _stationaryRequired &&
+        !_manualTripMode) {
       _stopTrip();
     }
   }
@@ -432,6 +534,12 @@ class MotionDetectionService extends ChangeNotifier {
   /// Stop the current trip
   void _stopTrip() async {
     if (!_isTripActive || _currentTrip == null) return;
+
+    // Don't auto-stop manual trips
+    if (_manualTripMode) {
+      debugPrint('⚠️ Manual trip active - skipping auto-stop');
+      return;
+    }
 
     debugPrint('🛑 Trip stopped - stationary detected');
 
@@ -701,6 +809,118 @@ class MotionDetectionService extends ChangeNotifier {
     debugPrint(
         '  - Distance During Speed: ${stats['totalDistanceDuringSpeed']}');
     debugPrint('  - Location Buffer Size: ${stats['locationBuffer']}');
+  }
+
+  /// Manually start a trip (for testing bike detection)
+  Future<void> startTripManually() async {
+    if (_isTripActive) {
+      debugPrint('⚠️ Trip already active');
+      return;
+    }
+
+    debugPrint('🚴 Manually starting bike trip...');
+    _manualTripMode = true; // Disable auto-stop detection
+    _startTrip();
+  }
+
+  /// Manually stop a trip (for manual trips)
+  Future<void> stopTripManually() async {
+    if (!_isTripActive) {
+      debugPrint('⚠️ No active trip to stop');
+      return;
+    }
+
+    debugPrint('🛑 Manually stopping bike trip...');
+    _manualTripMode = false; // Re-enable auto-stop detection
+    await _stopTripManually();
+  }
+
+  /// Internal method to stop trip manually (bypasses manual trip mode check)
+  Future<void> _stopTripManually() async {
+    if (!_isTripActive || _currentTrip == null) return;
+
+    debugPrint('🛑 Trip stopped manually');
+
+    try {
+      // Get current location
+      Position? currentPosition;
+      try {
+        currentPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 10),
+        );
+      } catch (e) {
+        debugPrint('⚠️ Could not get current position: $e');
+      }
+
+      // Update trip end details
+      _currentTrip = _currentTrip!.copyWith(
+        endTime: DateTime.now(),
+        endLatitude: currentPosition?.latitude,
+        endLongitude: currentPosition?.longitude,
+        endLocation: currentPosition != null
+            ? '${currentPosition.latitude.toStringAsFixed(4)}, ${currentPosition.longitude.toStringAsFixed(4)}'
+            : 'Unknown',
+      );
+
+      // Add final GPS log if available
+      if (currentPosition != null && _currentTrip!.gpsLogs != null) {
+        _currentTrip!.gpsLogs!.add(GpsLog(
+          latitude: currentPosition.latitude,
+          longitude: currentPosition.longitude,
+          speed: currentPosition.speed,
+          timestamp: currentPosition.timestamp,
+        ));
+      }
+
+      // Calculate trip duration
+      if (_currentTrip!.startTime != null && _currentTrip!.endTime != null) {
+        final duration =
+            _currentTrip!.endTime!.difference(_currentTrip!.startTime!);
+        _currentTrip = _currentTrip!.copyWith(
+          duration: duration.inSeconds,
+        );
+      }
+
+      // Calculate distance from GPS logs
+      _calculateTripDistance();
+
+      // Show trip end notification
+      await _notificationService.showTripEndNotification(
+        endLocation: _currentTrip!.endLocation ?? 'Unknown Location',
+        endTime: _currentTrip!.endTime!,
+        distance: _currentTrip!.distance ?? 0.0,
+        duration: _currentTrip!.duration ?? 0,
+      );
+
+      // Cancel persistent active trip notification
+      await _notificationService.cancelActiveTripNotification();
+
+      // Trip end is now handled locally only - will be saved after user confirmation
+      debugPrint('✅ Trip completed manually - waiting for user confirmation');
+
+      // Store completed trip for confirmation
+      final completedTrip = _currentTrip;
+      _lastCompletedTrip = completedTrip;
+
+      // Reset state
+      _isTripActive = false;
+      _currentTrip = null;
+      _resetBuffers();
+
+      notifyListeners();
+
+      // Show trip confirmation dialog after a short delay
+      if (completedTrip != null) {
+        Future.delayed(const Duration(seconds: 2), () {
+          NavigationService().showTripConfirmationDialog(completedTrip);
+        });
+      }
+
+      debugPrint('✅ Trip completed and saved');
+    } catch (e) {
+      debugPrint('❌ Error stopping trip: $e');
+    }
   }
 
   @override

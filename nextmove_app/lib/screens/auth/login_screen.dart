@@ -71,134 +71,175 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppConstants.defaultPadding * 2),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 60),
-
-                // Logo and title
-                Icon(
-                  Icons.directions_car_rounded,
-                  size: 80,
-                  color: Theme.of(context).primaryColor,
-                ),
-                const SizedBox(height: 24),
-
-                Text(
-                  'NextMove',
-                  style: AppTheme.headingLarge.copyWith(
-                    fontSize: 32,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 8),
-                Text(
-                  'Smart mobility tracking for NATPAC',
-                  style: AppTheme.bodyMedium.copyWith(color: Colors.grey[600]),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 48),
-
-                // Welcome text
-                const Text(
-                  'Enter your 10-digit mobile number',
-                  style: AppTheme.bodyLarge,
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 32),
-
-                // Phone number input
-                IntlPhoneField(
-                  controller: _phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Mobile Number',
-                    hintText: 'Enter your 10-digit mobile number',
-                  ),
-                  initialCountryCode: 'IN',
-                  onChanged: (phone) {
-                    _fullPhoneNumber = phone.completeNumber;
-                  },
-                  validator: (phone) {
-                    if (phone == null || phone.number.isEmpty) {
-                      return 'Please enter your mobile number';
-                    }
-                    if (phone.number.length != 10) {
-                      return 'Please enter a valid 10-digit mobile number';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 16),
-
-                // Error message
-                if (_errorMessage != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.errorRed.withValues(alpha: 0.1),
-                      borderRadius:
-                          BorderRadius.circular(AppConstants.borderRadius),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error_outline,
-                            color: AppTheme.errorRed, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _errorMessage!,
-                            style: const TextStyle(color: AppTheme.errorRed),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                const SizedBox(height: 24),
-
-                // Continue button
-                SizedBox(
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleContinue,
-                    child: _isLoading
-                        ? const SpinKitThreeBounce(
-                            color: Colors.white,
-                            size: 20,
-                          )
-                        : const Text('Continue'),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Terms text
-                const Text(
-                  'By continuing, you agree to our Terms of Service and Privacy Policy.',
-                  style: AppTheme.caption,
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 40),
-
-                // Features preview
-                _buildFeaturesList(),
-              ],
+        appBar: AppBar(
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppTheme.primaryBlue, AppTheme.successGreen],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.directions_car_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+              SizedBox(width: 8),
+              Text("NextMove",
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          centerTitle: false,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
         ),
-      ),
-    );
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.white, Colors.blue[50]!],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.defaultPadding * 0.5,
+                vertical: AppConstants.defaultPadding,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 60),
+
+                    // Logo and title
+                    Icon(
+                      Icons.directions_car_rounded,
+                      size: 80,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    const SizedBox(height: 24),
+
+                    Text(
+                      'NextMove',
+                      style: AppTheme.headingLarge.copyWith(
+                        fontSize: 32,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    const SizedBox(height: 8),
+                    Text(
+                      'Smart mobility tracking for NATPAC',
+                      style:
+                          AppTheme.bodyMedium.copyWith(color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    const SizedBox(height: 48),
+
+                    // Welcome text
+                    const Text(
+                      'Enter your 10-digit mobile number',
+                      style: AppTheme.bodyLarge,
+                      textAlign: TextAlign.center,
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Phone number input
+                    IntlPhoneField(
+                      controller: _phoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Mobile Number',
+                        hintText: 'Enter your 10-digit mobile number',
+                      ),
+                      initialCountryCode: 'IN',
+                      onChanged: (phone) {
+                        _fullPhoneNumber = phone.completeNumber;
+                      },
+                      validator: (phone) {
+                        if (phone == null || phone.number.isEmpty) {
+                          return 'Please enter your mobile number';
+                        }
+                        if (phone.number.length != 10) {
+                          return 'Please enter a valid 10-digit mobile number';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Error message
+                    if (_errorMessage != null)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.errorRed.withValues(alpha: 0.1),
+                          borderRadius:
+                              BorderRadius.circular(AppConstants.borderRadius),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline,
+                                color: AppTheme.errorRed, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style:
+                                    const TextStyle(color: AppTheme.errorRed),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: 24),
+
+                    // Continue button
+                    SizedBox(
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _handleContinue,
+                        child: _isLoading
+                            ? const SpinKitThreeBounce(
+                                color: Colors.white,
+                                size: 20,
+                              )
+                            : const Text('Continue'),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Terms text
+                    const Text(
+                      'By continuing, you agree to our Terms of Service and Privacy Policy.',
+                      style: AppTheme.caption,
+                      textAlign: TextAlign.center,
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    // Features preview
+                    _buildFeaturesList(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ));
   }
 
   Widget _buildFeaturesList() {

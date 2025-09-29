@@ -169,180 +169,246 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final isKeyboardVisible = keyboardHeight > 0;
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppTheme.primaryBlue, AppTheme.successGreen],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        title: const Row(
+          children: [
+            Icon(
+              Icons.directions_car_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+            SizedBox(width: 8),
+            Text(
+              "NextMove",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: false,
         elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppConstants.defaultPadding * 2),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.white, Colors.blue[50]!],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 40),
-
-              // Title
-              const Text(
-                'Verify Your Number',
-                style: AppTheme.headingLarge,
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 16),
-
-              // Instruction text
-              Text(
-                'Enter the 6-digit OTP sent to\n${_formatPhoneNumber(widget.phoneNumber)}',
-                style: AppTheme.bodyMedium.copyWith(color: Colors.grey[600]),
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 40),
-
-              // OTP input
-              PinCodeTextField(
-                appContext: context,
-                length: 6,
-                controller: _otpController,
-                keyboardType: TextInputType.number,
-                animationType: AnimationType.fade,
-                pinTheme: PinTheme(
-                  shape: PinCodeFieldShape.box,
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.borderRadius),
-                  fieldHeight: 56,
-                  fieldWidth: 48,
-                  activeFillColor: Colors.white,
-                  inactiveFillColor: Colors.white,
-                  selectedFillColor: Colors.white,
-                  activeColor: AppTheme.primaryBlue,
-                  inactiveColor: Colors.grey[300]!,
-                  selectedColor: AppTheme.primaryBlue,
-                ),
-                enableActiveFill: true,
-                onCompleted: (value) {
-                  // Auto-verify when 6 digits are entered
-                  _handleVerify();
-                },
-                onChanged: (value) {
-                  setState(() {
-                    _errorMessage = null;
-                  });
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // Error message
-              if (_errorMessage != null)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.errorRed.withValues(alpha: 0.1),
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.borderRadius),
+              // Main content area
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.defaultPadding * 0.5,
+                    vertical: AppConstants.defaultPadding,
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(Icons.error_outline,
-                          color: AppTheme.errorRed, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: const TextStyle(color: AppTheme.errorRed),
+                      const SizedBox(height: 20),
+
+                      // Title
+                      const Text(
+                        'Verify Your Number',
+                        style: AppTheme.headingLarge,
+                        textAlign: TextAlign.center,
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Instruction text
+                      Text(
+                        'Enter the 6-digit OTP sent to\n${_formatPhoneNumber(widget.phoneNumber)}',
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: Colors.grey[600],
                         ),
+                        textAlign: TextAlign.center,
+                      ),
+
+                      const SizedBox(height: 40),
+
+                      // OTP input
+                      PinCodeTextField(
+                        appContext: context,
+                        length: 6,
+                        controller: _otpController,
+                        keyboardType: TextInputType.number,
+                        animationType: AnimationType.fade,
+                        pinTheme: PinTheme(
+                          shape: PinCodeFieldShape.box,
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.borderRadius,
+                          ),
+                          fieldHeight: 56,
+                          fieldWidth: 48,
+                          activeFillColor: Colors.white,
+                          inactiveFillColor: Colors.white,
+                          selectedFillColor: Colors.white,
+                          activeColor: AppTheme.primaryBlue,
+                          inactiveColor: Colors.grey[300]!,
+                          selectedColor: AppTheme.primaryBlue,
+                        ),
+                        enableActiveFill: true,
+                        onCompleted: (value) {
+                          // Auto-verify when 6 digits are entered
+                          _handleVerify();
+                        },
+                        onChanged: (value) {
+                          setState(() {
+                            _errorMessage = null;
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Error message
+                      if (_errorMessage != null)
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.errorRed.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(
+                              AppConstants.borderRadius,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: AppTheme.errorRed,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage!,
+                                  style: const TextStyle(
+                                    color: AppTheme.errorRed,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      const SizedBox(height: 24),
+
+                      // Verify button
+                      SizedBox(
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _handleVerify,
+                          child: _isLoading
+                              ? const SpinKitThreeBounce(
+                                  color: Colors.white,
+                                  size: 20,
+                                )
+                              : const Text('Verify'),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Resend OTP
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "Didn't receive the code? ",
+                            style: AppTheme.bodyMedium,
+                          ),
+                          if (_canResend)
+                            GestureDetector(
+                              onTap: _handleResendOtp,
+                              child: Text(
+                                'Resend OTP',
+                                style: AppTheme.bodyMedium.copyWith(
+                                  color: AppTheme.primaryBlue,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            )
+                          else
+                            Text(
+                              'Resend OTP in ${_resendTimer}s',
+                              style: AppTheme.bodyMedium.copyWith(
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      // Add extra space when keyboard is visible
+                      SizedBox(height: isKeyboardVisible ? 20 : 0),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Conditional bottom help text - hide when keyboard is visible
+              if (!isKeyboardVisible)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppConstants.defaultPadding),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.blue[100]!,
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        color: AppTheme.primaryBlue,
+                        size: 24,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Having trouble receiving the OTP?',
+                        style: AppTheme.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Make sure you have good network coverage and try again.',
+                        style: AppTheme.caption,
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
-
-              const SizedBox(height: 24),
-
-              // Verify button
-              SizedBox(
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleVerify,
-                  child: _isLoading
-                      ? const SpinKitThreeBounce(
-                          color: Colors.white,
-                          size: 20,
-                        )
-                      : const Text('Verify'),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Resend OTP
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    "Didn't receive the code? ",
-                    style: AppTheme.bodyMedium,
-                  ),
-                  if (_canResend)
-                    GestureDetector(
-                      onTap: _handleResendOtp,
-                      child: Text(
-                        'Resend OTP',
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: AppTheme.primaryBlue,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    )
-                  else
-                    Text(
-                      'Resend OTP in ${_resendTimer}s',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                ],
-              ),
-
-              const Spacer(),
-
-              // Help text
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.borderRadius),
-                ),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.info_outline,
-                      color: AppTheme.primaryBlue,
-                      size: 24,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Having trouble receiving the OTP?',
-                      style: AppTheme.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Make sure you have good network coverage and try again.',
-                      style: AppTheme.caption,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
