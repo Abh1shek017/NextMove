@@ -332,6 +332,8 @@ class AuthService extends ChangeNotifier {
     required String confirmedMode,
     String? purpose,
     String? comment,
+    int? companions,
+    double? cost,
   }) async {
     final headers = await getAuthHeaders();
 
@@ -339,14 +341,19 @@ class AuthService extends ChangeNotifier {
       throw Exception("Not authenticated");
     }
 
+    final body = <String, dynamic>{
+      'confirmed_mode': confirmedMode,
+    };
+
+    if (purpose != null) body['purpose'] = purpose;
+    if (comment != null) body['comment'] = comment;
+    if (companions != null) body['companions'] = companions;
+    if (cost != null) body['cost'] = cost;
+
     final response = await http.post(
       Uri.parse('${AppConstants.baseUrl}/trip/confirm/$tripId'),
       headers: headers,
-      body: jsonEncode({
-        'confirmed_mode': confirmedMode,
-        'purpose': purpose,
-        'comment': comment,
-      }),
+      body: jsonEncode(body),
     );
 
     if (response.statusCode != 200) {

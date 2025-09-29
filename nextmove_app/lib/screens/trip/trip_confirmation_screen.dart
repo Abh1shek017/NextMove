@@ -33,8 +33,11 @@ class _TripConfirmationScreenState extends State<TripConfirmationScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-select the predicted mode
-    _selectedMode = widget.trip.predictedMode;
+    // Pre-select the predicted mode if it exists in the dropdown options
+    if (widget.trip.predictedMode != null &&
+        AppConstants.transportModes.contains(widget.trip.predictedMode)) {
+      _selectedMode = widget.trip.predictedMode;
+    }
   }
 
   @override
@@ -74,6 +77,8 @@ class _TripConfirmationScreenState extends State<TripConfirmationScreen> {
       comment: _commentController.text.trim().isEmpty
           ? null
           : _commentController.text.trim(),
+      companions: int.tryParse(_companionsController.text),
+      cost: double.tryParse(_costController.text),
     );
   }
 
@@ -106,6 +111,8 @@ class _TripConfirmationScreenState extends State<TripConfirmationScreen> {
           comment: _commentController.text.trim().isEmpty
               ? null
               : _commentController.text.trim(),
+          companions: int.tryParse(_companionsController.text),
+          cost: double.tryParse(_costController.text),
         );
 
         // Show success message
@@ -495,6 +502,8 @@ class _TripConfirmationScreenState extends State<TripConfirmationScreen> {
         return Colors.yellow[700]!;
       case 'train':
         return Colors.indigo;
+      case 'other':
+        return Colors.grey[600]!;
       default:
         return Colors.grey;
     }
@@ -514,6 +523,8 @@ class _TripConfirmationScreenState extends State<TripConfirmationScreen> {
         return Icons.local_taxi;
       case 'train':
         return Icons.train;
+      case 'other':
+        return Icons.help_outline;
       default:
         return Icons.help_outline;
     }

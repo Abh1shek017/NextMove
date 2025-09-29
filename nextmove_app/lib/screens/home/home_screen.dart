@@ -292,10 +292,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       // Unconfirmed Trips Section
                       _buildUnconfirmedTripsSection(),
-                      const SizedBox(height: 20),
-
-                      // Quick Actions Section
-                      _buildQuickActionsSection(),
                     ],
                   ),
                 ),
@@ -332,6 +328,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final totalTime =
         todayTrips.fold<int>(0, (sum, trip) => sum + (trip.duration ?? 0));
 
+    final isEmpty = totalTrips == 0;
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -350,10 +348,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: AppTheme.headingMedium,
               ),
               const SizedBox(height: 20),
-              if (totalTrips == 0)
-                _buildEmptyState()
-              else
-                _buildActivityMetrics(totalTrips, totalDistance, totalTime),
+              _buildActivityMetrics(
+                totalTrips,
+                totalDistance,
+                totalTime,
+                isEmpty: isEmpty,
+              ),
             ],
           ),
         ),
@@ -361,64 +361,41 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.directions_walk,
-            size: 48,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            "No trips recorded yet today",
-            style: AppTheme.bodyMedium.copyWith(color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "Start moving to see your activity here!",
-            style: AppTheme.caption,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildActivityMetrics(
-      int totalTrips, double totalDistance, int totalTime) {
+    int totalTrips,
+    double totalDistance,
+    int totalTime, {
+    bool isEmpty = false,
+  }) {
     return Row(
       children: [
         Expanded(
           child: _buildMetricItem(
             'Total Trips',
-            totalTrips.toString(),
+            isEmpty ? '–' : totalTrips.toString(),
             Icons.directions,
             AppTheme.primaryBlue,
+            isEmpty,
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: _buildMetricItem(
             'Distance',
-            '${totalDistance.toStringAsFixed(1)} km',
+            isEmpty ? '–' : '${totalDistance.toStringAsFixed(1)} km',
             Icons.straighten,
             AppTheme.successGreen,
+            isEmpty,
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: _buildMetricItem(
             'Travel Time',
-            '${(totalTime / 60).toStringAsFixed(1)}h',
+            isEmpty ? '–' : '${(totalTime / 60).toStringAsFixed(1)}h',
             Icons.access_time,
             AppTheme.warningOrange,
+            isEmpty,
           ),
         ),
       ],
@@ -426,25 +403,38 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMetricItem(
-      String label, String value, IconData icon, Color color) {
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+    bool isEmpty,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: isEmpty ? Colors.grey[100] : color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppConstants.borderRadius),
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 24),
+          Icon(
+            icon,
+            color: isEmpty ? Colors.grey[400] : color,
+            size: 24,
+          ),
           const SizedBox(height: 8),
           Text(
             value,
-            style: AppTheme.headingMedium.copyWith(color: color),
+            style: AppTheme.headingMedium.copyWith(
+              color: isEmpty ? Colors.grey[500] : color,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: AppTheme.caption,
+            style: AppTheme.caption.copyWith(
+              color: isEmpty ? Colors.grey[400] : null,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -902,142 +892,5 @@ class _HomeScreenState extends State<HomeScreen> {
       totalDistance += distance;
     }
     return totalDistance;
-  }
-
-  Widget _buildQuickActionsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.flash_on,
-                color: AppTheme.primaryBlue,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              "Quick Actions",
-              style: AppTheme.headingMedium,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  // Create a test trip
-                  final motionService = Provider.of<MotionDetectionService>(
-                      context,
-                      listen: false);
-                  await motionService.createTestTrip();
-
-                  // Refresh the data to show the new trip
-                  _loadPendingConfirmations();
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                          'Test trip created! Check unconfirmed trips section.'),
-                      backgroundColor: AppTheme.successGreen,
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.add_location),
-                label: const Text('Create Test Trip'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.successGreen,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  // Clear all local trip data
-                  await LocalTripService.clearAllLocalData();
-                  _loadTodayTrips();
-                  _loadPendingConfirmations();
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Local trip data cleared!'),
-                      backgroundColor: AppTheme.warningOrange,
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.clear_all),
-                label: const Text('Clear Data'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        // Debug and manual trip buttons
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () =>
-                    MotionDetectionService().debugMotionDetection(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.warningOrange,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Debug Motion'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Consumer<MotionDetectionService>(
-                builder: (context, motionService, child) => ElevatedButton(
-                  onPressed: () async {
-                    if (motionService.isTripActive) {
-                      await motionService.stopTripManually();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Bike trip stopped manually!'),
-                          backgroundColor: AppTheme.warningOrange,
-                        ),
-                      );
-                    } else {
-                      await motionService.startTripManually();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Bike trip started manually!'),
-                          backgroundColor: AppTheme.successGreen,
-                        ),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: motionService.isTripActive
-                        ? AppTheme.warningOrange
-                        : AppTheme.successGreen,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                  ),
-                  child: Text(motionService.isTripActive
-                      ? 'Stop Trip'
-                      : 'Start Bike Trip'),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
   }
 }

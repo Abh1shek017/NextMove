@@ -68,7 +68,7 @@ class LocalTripService {
 
   /// Move trip from pending to confirmed (local)
   static Future<void> confirmTrip(int tripId, String confirmedMode,
-      {String? purpose, String? comment}) async {
+      {String? purpose, String? comment, int? companions, double? cost}) async {
     final pendingTrips = await getPendingTrips();
     final confirmedTrips = await getLocalTrips();
 
@@ -80,6 +80,8 @@ class LocalTripService {
         confirmedMode: confirmedMode,
         purpose: purpose ?? trip.purpose,
         comment: comment ?? trip.comment,
+        companions: companions ?? trip.companions,
+        cost: cost ?? trip.cost,
       );
 
       // Remove from pending and add to confirmed
